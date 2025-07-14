@@ -112,7 +112,7 @@ def run_analysis():
         data.extend(week_data)
 
     df = pd.DataFrame(data)
-    df = df.sort_values(by=["Week", "Status", "Count", "User"], ascending=[True, True, False, True])
+    df = df.sort_values(by=["Week", "Count", "Status", "User"], ascending=[False, False, False, False])
 
     result_html = df.to_html(index=False, classes="table table-striped table-bordered", justify="center")
     return render_template("index.html", table=result_html, out_count=out_count, money=money)
