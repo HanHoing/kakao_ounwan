@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, redirect, send_file
 import pandas as pd
 import re
@@ -10,7 +11,7 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 키워드 리스트 (AI 없이 고정된 버전)
-KEYWORDS = ["오운완", "운완", "ㅇㅇㅇ", "오스완", "오산완", "운오ㅓㄴ", "/4", "인증","수완","완"]
+KEYWORDS = ["오운완", "운완", "ㅇㅇㅇ", "오스완", "오산완", "운오ㅓㄴ", "/4", "인증", "수완", "완"]
 
 @app.route("/", methods=["GET"])
 def index():
@@ -52,6 +53,7 @@ def run_analysis():
                     sunday = logical_date + timedelta(days=(6 - logical_date.weekday()))
                     week_key = sunday.strftime("%Y-%m-%d")
                     weekly_invited[week_key].add(invited)
+                continue
 
             msg_match = msg_pattern.match(line)
             if msg_match and current_date:
@@ -67,8 +69,10 @@ def run_analysis():
                     msg_time = current_date.replace(hour=hour, minute=int(minute))
                     logical_date = msg_time - timedelta(days=1) if msg_time.hour < 3 else msg_time
                     logical_date = logical_date.date()
+                else:
+                    continue  # 시간 없으면 skip
 
-                if message.startswith("사진") or message.startswith("동영상"):
+                if "사진" in message or "동영상" in message:
                     if keyword_buffer:
                         k_user, k_date = keyword_buffer
                         if not already_counted[k_date][k_user]:
@@ -102,12 +106,11 @@ def run_analysis():
         week_data = []
         new_users = []
         for user, count in user_counts.items():
-            display_user = "한혜영" if user == "." else user
             if user in invited_users:
-                new_users.append({"Week": week, "User": display_user, "Count": count, "Status": "NEW USER"})
+                new_users.append({"Week": week, "User": user, "Count": count, "Status": "NEW USER"})
             else:
                 status = str(out_count - count) + " OUT     -" + str(money * (out_count - count)) if count < out_count else ""
-                week_data.append({"Week": week, "User": display_user, "Count": count, "Status": status})
+                week_data.append({"Week": week, "User": user, "Count": count, "Status": status})
         week_data.extend(new_users)
         data.extend(week_data)
 
