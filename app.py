@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, send_file
 import pandas as pd
 import re
@@ -10,7 +9,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 키워드 리스트 (AI 없이 고정된 버전)
+# 키워드 리스트
 KEYWORDS = ["오운완", "운완", "ㅇㅇㅇ", "오스완", "오산완", "운오ㅓㄴ", "/4", "인증", "수완", "완"]
 
 @app.route("/", methods=["GET"])
@@ -25,13 +24,14 @@ def run_analysis():
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
-    # 분석 시작
     date_pattern = re.compile(r"-{7,}\s*(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일")
     msg_pattern = re.compile(r"^\[(.+?)\]\s+\[.+?\]\s+(.+)")
+    time_pattern = re.compile(r"\[(오전|오후)\s*(\d+):(\d+)\]")
 
     weekly_invited = defaultdict(set)
-    weekly_counts = defaultdict(lambda: defaultdict(int))
-    already_counted = defaultdict(lambda: defaultdict(bool))
+    daily_counts = defaultdict(lambda: defaultdict(int))
+    already_counted = set()
+
     photo_buffer = None
     keyword_buffer = None
     current_date = None
@@ -58,7 +58,7 @@ def run_analysis():
             msg_match = msg_pattern.match(line)
             if msg_match and current_date:
                 user, message = msg_match.groups()
-                time_match = re.search(r"\[(오전|오후)\s*(\d+):(\d+)\]", line)
+                time_match = time_pattern.search(line)
                 if time_match:
                     period, hour, minute = time_match.groups()
                     hour = int(hour)
@@ -70,29 +70,23 @@ def run_analysis():
                     logical_date = msg_time - timedelta(days=1) if msg_time.hour < 3 else msg_time
                     logical_date = logical_date.date()
                 else:
-                    continue  # 시간 없으면 skip
+                    continue
 
                 if "사진" in message or "동영상" in message:
-                    if keyword_buffer:
-                        k_user, k_date = keyword_buffer
-                        if not already_counted[k_date][k_user]:
-                            sunday = k_date + timedelta(days=(6 - k_date.weekday()))
-                            week_key = sunday.strftime("%Y-%m-%d")
-                            weekly_counts[week_key][k_user] += 1
-                            already_counted[k_date][k_user] = True
+                    if keyword_buffer and keyword_buffer[1] == logical_date and keyword_buffer[0] == user:
+                        if (user, logical_date) not in already_counted:
+                            daily_counts[logical_date][user] += 1
+                            already_counted.add((user, logical_date))
                         keyword_buffer = None
                     else:
                         photo_buffer = (user, logical_date)
                     continue
 
                 if any(re.search(fr"{keyword}", message) for keyword in KEYWORDS):
-                    if photo_buffer:
-                        p_user, p_date = photo_buffer
-                        if not already_counted[p_date][p_user]:
-                            sunday = p_date + timedelta(days=(6 - p_date.weekday()))
-                            week_key = sunday.strftime("%Y-%m-%d")
-                            weekly_counts[week_key][p_user] += 1
-                            already_counted[p_date][p_user] = True
+                    if photo_buffer and photo_buffer[1] == logical_date and photo_buffer[0] == user:
+                        if (user, logical_date) not in already_counted:
+                            daily_counts[logical_date][user] += 1
+                            already_counted.add((user, logical_date))
                         photo_buffer = None
                     else:
                         keyword_buffer = (user, logical_date)
@@ -100,24 +94,28 @@ def run_analysis():
                     photo_buffer = None
                     keyword_buffer = None
 
+    # 주간 단위로 정리
+    weekly_counts = defaultdict(lambda: defaultdict(int))
+    for logical_date, user_counts in daily_counts.items():
+        sunday = logical_date + timedelta(days=(6 - logical_date.weekday()))
+        week_key = sunday.strftime("%Y-%m-%d")
+        for user, count in user_counts.items():
+            weekly_counts[week_key][user] += count
+
     data = []
     for week, user_counts in weekly_counts.items():
         invited_users = weekly_invited.get(week, set())
-        week_data = []
-        new_users = []
         for user, count in user_counts.items():
             if user in invited_users:
-                new_users.append({"Week": week, "User": user, "Count": count, "Status": "NEW USER"})
+                data.append({"Week": week, "User": user, "Count": count, "Status": "NEW USER"})
             else:
                 status = str(out_count - count) + " OUT     -" + str(money * (out_count - count)) if count < out_count else ""
-                week_data.append({"Week": week, "User": user, "Count": count, "Status": status})
-        week_data.extend(new_users)
-        data.extend(week_data)
+                data.append({"Week": week, "User": user, "Count": count, "Status": status})
 
     df = pd.DataFrame(data)
     df = df.sort_values(by=["Week", "Count", "Status", "User"], ascending=[False, False, False, False])
-
     result_html = df.to_html(index=False, classes="table table-striped table-bordered", justify="center")
+
     return render_template("index.html", table=result_html, out_count=out_count, money=money)
 
 if __name__ == "__main__":
