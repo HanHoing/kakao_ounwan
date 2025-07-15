@@ -10,7 +10,7 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 키워드 리스트 (AI 없이 고정된 버전)
-KEYWORDS = ["오운완", "운완", "ㅇㅇㅇ", "오공완", "오스완", "오산완", "운오ㅓㄴ", "/4", "인증","완"]
+KEYWORDS = ["오운완", "운완", "ㅇㅇㅇ", "오스완", "오산완", "운오ㅓㄴ", "/4", "인증","수완","완"]
 
 @app.route("/", methods=["GET"])
 def index():
