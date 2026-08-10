@@ -81,16 +81,21 @@
         <p class="hint" style="margin:0;">기준 {{ out_count }}회 · {{ "{:,}".format(money) }}원</p>
       </div>
 
-      {% set latest = weeks[0] %}
-      {{ render_week(latest, "최근 주 · " ~ latest.week ~ " 마감") }}
-
+      {# 공유용: 바로 전 주(weeks[1])를 기본으로 먼저 표시. 없으면 최신 주만. #}
       {% if weeks|length > 1 %}
-        <details class="older-weeks">
-          <summary>이전 주 보기 ({{ weeks|length - 1 }}주)</summary>
-          {% for week in weeks[1:] %}
-            {{ render_week(week, week.week ~ " 마감") }}
-          {% endfor %}
-        </details>
+        {% set prev = weeks[1] %}
+        {{ render_week(prev, "지난 주 · " ~ prev.week ~ " 마감") }}
+        {{ render_week(weeks[0], "최근 주 · " ~ weeks[0].week ~ " 마감") }}
+        {% if weeks|length > 2 %}
+          <details class="older-weeks">
+            <summary>이전 주 보기 ({{ weeks|length - 2 }}주)</summary>
+            {% for week in weeks[2:] %}
+              {{ render_week(week, week.week ~ " 마감") }}
+            {% endfor %}
+          </details>
+        {% endif %}
+      {% else %}
+        {{ render_week(weeks[0], "최근 주 · " ~ weeks[0].week ~ " 마감") }}
       {% endif %}
 
       <details class="older-weeks">
