@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.log
+.venv/
+venv/
+.env
+uploads/*
+!uploads/.gitkeep
+gcm-diagnose.log
+.DS_Store

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: kakao-ounwan
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT app:app
+    autoDeployTrigger: commit

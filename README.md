@@ -3,6 +3,18 @@
 카카오톡 오운완(운동 인증) 채팅 `.txt`를 분석해 주간 인증 횟수·OUT·벌금을 계산하는 웹 앱입니다.  
 안드로이드 Chrome에서 **홈 화면에 추가(PWA)** 해 앱처럼 쓸 수 있습니다.
 
+## 클라우드 배포 (PC 꺼도 동작)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/HanHoing/kakao_ounwan)
+
+1. 위 버튼 클릭 (또는 [Render Dashboard](https://dashboard.render.com/) → New → Blueprint)
+2. GitHub 계정(`HanHoing`)으로 로그인 후 `kakao_ounwan` 저장소 연결
+3. Blueprint(`render.yaml`) 확인 후 **Apply** / **Create Web Service**
+4. 배포가 끝나면 `https://kakao-ounwan.onrender.com` 형태의 URL이 발급됩니다
+
+이후 `main`에 push하면 자동 재배포됩니다.  
+무료 플랜은 약 15분 미사용 시 sleep 되며, 첫 접속만 조금 느릴 수 있습니다.
+
 ## 로컬 실행
 
 ```bash
@@ -18,15 +30,6 @@ gunicorn:
 set PORT=8000
 gunicorn -b 0.0.0.0:8000 app:app
 ```
-
-## 배포 (HTTPS 권장)
-
-Railway / Render / Fly.io 등에 올리고 `Procfile`로 실행합니다.  
-PWA 홈 화면 추가는 **HTTPS** 환경에서 가능합니다.
-
-1. 저장소 연결 후 배포
-2. 폰 Chrome으로 URL 접속
-3. 메뉴(⋮) → 홈 화면에 추가 / 설치
 
 ## 사용 방법 (안드로이드)
 
