@@ -2,35 +2,160 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>운동 인증 분석기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f7a4d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="카카오톡 오운완 채팅을 분석해 주간 인증·벌금을 계산합니다.">
+  <title>오운완 분석</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/app.css?v=2" rel="stylesheet">
 </head>
-<body class="bg-light">
-<div class="container py-5">
-  <h2 class="mb-4">📊 카카오톡 운동 인증 분석기</h2>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <h1>오운완 분석</h1>
+    <p>카톡 내보내기(.txt) 업로드 → 주간 인증·OUT·벌금</p>
+  </header>
 
-  <form action="/run" method="post" enctype="multipart/form-data" class="bg-white border rounded p-4 mb-4">
-    <div class="mb-3">
-      <label for="outCount" class="form-label">✅ 기준 인증 횟수 (OUT_COUNT)</label>
-      <input type="number" class="form-control" id="outCount" name="outCount" value="5" required>
+  <form id="analyzeForm" action="/run" method="post" enctype="multipart/form-data" class="panel">
+    <div class="form-row mb-2">
+      <div>
+        <label for="outCount" class="form-label">기준 횟수</label>
+        <input type="number" class="form-control" id="outCount" name="outCount"
+               value="{{ out_count if out_count is defined else 5 }}"
+               min="1" inputmode="numeric" required>
+      </div>
+      <div>
+        <label for="money" class="form-label">1회 벌금</label>
+        <input type="number" class="form-control" id="money" name="money"
+               value="{{ money if money is defined else 5000 }}"
+               min="0" step="100" inputmode="numeric" required>
+      </div>
     </div>
-    <div class="mb-3">
-      <label for="money" class="form-label">💰 1회당 벌금 (MONEY, 원)</label>
-      <input type="number" class="form-control" id="money" name="money" value="5000" required>
+    <div class="mb-2">
+      <label for="chatFile" class="form-label">채팅 파일 (.txt)</label>
+      <input type="file" class="form-control" id="chatFile" name="chatFile"
+             accept=".txt,text/plain" required>
+      <p class="hint">카톡 → 단톡 메뉴 → 내보내기 → 다운로드의 txt</p>
     </div>
-    <div class="mb-3">
-      <label for="chatFile" class="form-label">📁 카카오톡 채팅 파일 업로드 (.txt)</label>
-      <input type="file" class="form-control" id="chatFile" name="chatFile" accept=".txt" required>
-    </div>
-    <button type="submit" class="btn btn-primary">🚀 분석 시작</button>
+    <button type="submit" class="btn btn-analyze" id="submitBtn">분석 시작</button>
   </form>
 
-  {% if table %}
-    <div class="card p-3 border shadow-sm">
-      <h5 class="mb-3">📈 분석 결과</h5>
-      {{ table|safe }}
-    </div>
+  {% if error %}
+    <div class="alert-box" role="alert">{{ error }}</div>
   {% endif %}
+
+  {% if weeks is defined and weeks %}
+    <section class="panel">
+      <div class="results-head">
+        <h2>분석 결과</h2>
+        <p class="hint" style="margin:0;">기준 {{ out_count }}회 · {{ "{:,}".format(money) }}원</p>
+      </div>
+
+      {# 최근 주만 바로 표시 #}
+      {% set latest = weeks[0] %}
+      <div class="week-block">
+        <h3 class="week-title">최근 주 · {{ latest.week }} 마감</h3>
+        <div class="result-list">
+          {% for row in latest.rows %}
+            <article class="result-row">
+              <div class="user">{{ row.User }}</div>
+              <div class="count">{{ row.Count }}회</div>
+              {% if row.kind == "new" %}
+                <span class="badge badge-new">NEW</span>
+              {% elif row.kind == "out" %}
+                <span class="badge badge-out">OUT {{ row.deficit }} · -{{ "{:,}".format(row.fine) }}</span>
+              {% else %}
+                <span class="badge badge-ok">달성</span>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if weeks|length > 1 %}
+        <details class="older-weeks">
+          <summary>이전 주 보기 ({{ weeks|length - 1 }}주)</summary>
+          {% for week in weeks[1:] %}
+            <div class="week-block">
+              <h3 class="week-title">{{ week.week }} 마감</h3>
+              <div class="result-list">
+                {% for row in week.rows %}
+                  <article class="result-row">
+                    <div class="user">{{ row.User }}</div>
+                    <div class="count">{{ row.Count }}회</div>
+                    {% if row.kind == "new" %}
+                      <span class="badge badge-new">NEW</span>
+                    {% elif row.kind == "out" %}
+                      <span class="badge badge-out">OUT {{ row.deficit }} · -{{ "{:,}".format(row.fine) }}</span>
+                    {% else %}
+                      <span class="badge badge-ok">달성</span>
+                    {% endif %}
+                  </article>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </details>
+      {% endif %}
+
+      <details class="older-weeks">
+        <summary>표로 보기</summary>
+        <div class="table-wrap">
+          <table class="table table-sm table-striped table-bordered mb-0 text-center">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>User</th>
+                <th>Count</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                <tr>
+                  <td>{{ row.Week }}</td>
+                  <td>{{ row.User }}</td>
+                  <td>{{ row.Count }}</td>
+                  <td>{{ row.Status }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  {% elif rows is defined and not rows %}
+    <div class="panel empty-state">인증 집계 결과가 없습니다.</div>
+  {% endif %}
+
+  <p class="install-tip">
+    <strong>앱처럼 쓰기</strong><br>
+    Chrome 메뉴(⋮) → 홈 화면에 추가 (HTTPS 배포 후)
+  </p>
 </div>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    });
+  }
+
+  (function () {
+    var form = document.getElementById("analyzeForm");
+    var btn = document.getElementById("submitBtn");
+    if (!form || !btn) return;
+    form.addEventListener("submit", function () {
+      btn.disabled = true;
+      btn.textContent = "분석 중…";
+    });
+  })();
+</script>
 </body>
 </html>
