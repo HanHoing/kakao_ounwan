@@ -139,11 +139,42 @@ body {
   padding-top: 0.75rem;
 }
 
+.week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
 .week-title {
   font-size: 0.78rem;
   font-weight: 700;
-  margin: 0 0 0.4rem;
+  margin: 0;
   color: var(--muted);
+  min-width: 0;
+}
+
+.btn-share {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-share:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.week-block.is-capturing .btn-share {
+  visibility: hidden;
 }
 
 .result-list {
